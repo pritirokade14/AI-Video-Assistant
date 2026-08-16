@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Video Assistant</title>
+<meta name="description" content="Summarize, understand & chat with any video using AI." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><i class="fa-solid fa-play"></i></div>
+      <div class="brand-text">AI Video Assistant<span>Understand any video</span></div>
+    </div>
+
+    <nav class="nav-list" aria-label="Primary navigation">
+      <button class="nav-item active" data-view="dashboard"><i class="fa-solid fa-house"></i>Dashboard</button>
+      <button class="nav-item" data-view="dashboard"><i class="fa-solid fa-play"></i>Process Video</button>
+      <button class="nav-item" data-view="jobs"><i class="fa-solid fa-layer-group"></i>My Jobs</button>
+      <button class="nav-item" data-view="chat"><i class="fa-solid fa-comments"></i>Chat Assistant</button>
+      <button class="nav-item" data-view="settings"><i class="fa-solid fa-gear"></i>Settings</button>
+    </nav>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-footer">
+      <label class="toggle-row" for="darkModeToggle">
+        <span><i class="fa-solid fa-moon"></i>&nbsp; Dark Mode</span>
+        <span class="switch">
+          <input type="checkbox" id="darkModeToggle" />
+          <span class="track"></span>
+        </span>
+      </label>
+
+      <div class="help-card">
+        <p>Need help?</p>
+        <a href="#" target="_blank" rel="noopener"><i class="fa-solid fa-book"></i> View Documentation</a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ===================== MAIN ===================== -->
+  <div class="main-wrap">
+
+    <!-- Mobile topbar -->
+    <header class="topbar">
+      <div class="topbar-brand"><span class="brand-icon"><i class="fa-solid fa-play"></i></span> AI Video Assistant</div>
+      <button class="menu-btn" id="menuToggle" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
+    </header>
+
+    <main class="main">
+
+      <!-- ===================== DASHBOARD ===================== -->
+      <section class="view active" id="view-dashboard">
+
+        <div class="hero">
+          <span class="badge badge-ai"><i class="fa-solid fa-sparkles"></i> AI Powered</span>
+          <h1>AI Video Assistant<br /><span class="grad-text">Summarize, understand &amp; chat with any video</span></h1>
+          <p class="hero-sub">Upload a video or paste a YouTube link and let AI generate summaries, insights, and answers for you.</p>
+        </div>
+
+        <div class="input-grid">
+
+          <!-- YouTube card -->
+          <div class="card card-pad" id="youtubeCard">
+            <div class="input-card-icon icon-purple"><i class="fa-brands fa-youtube"></i></div>
+            <h3>YouTube URL</h3>
+            <p class="input-card-desc">Paste a YouTube video link to get started</p>
+
+            <div class="field">
+              <input type="url" id="youtubeUrlInput" placeholder="https://youtube.com/watch?v=..." aria-label="YouTube video URL" />
+            </div>
+
+            <label for="youtubeLangSelect" class="visually-hidden" style="font-size:12px;color:var(--text-low);">Language</label>
+            <select class="lang-select" id="youtubeLangSelect" aria-label="Transcription language">
+              <option value="english">English</option>
+              <option value="hinglish">Hinglish</option>
+            </select>
+
+            <button class="btn btn-primary btn-block" id="youtubeSubmitBtn">Process Video <i class="fa-solid fa-arrow-right"></i></button>
+          </div>
+
+          <!-- Upload card -->
+          <div class="card card-pad" id="uploadCard">
+            <div class="input-card-icon icon-teal"><i class="fa-solid fa-upload"></i></div>
+            <h3>Upload Video</h3>
+            <p class="input-card-desc">Upload a video or audio file from your device</p>
+
+            <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload a video or audio file"></div>
+            <input type="file" id="fileInput" accept=".mp4,.mp3,.wav,.mov,.m4a,.webm,.avi,.mkv" class="hidden" />
+
+            <select class="lang-select" id="uploadLangSelect" aria-label="Transcription language">
+              <option value="english">English</option>
+              <option value="hinglish">Hinglish</option>
+            </select>
+
+            <button class="btn btn-primary btn-block" id="uploadSubmitBtn">Upload &amp; Process <i class="fa-solid fa-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <div class="feature-grid">
+          <div class="card card-pad feature-card">
+            <div class="input-card-icon icon-purple"><i class="fa-solid fa-brain"></i></div>
+            <h4>AI Powered</h4>
+            <p>Advanced AI analyzes your video content deeply.</p>
+          </div>
+          <div class="card card-pad feature-card">
+            <div class="input-card-icon icon-teal"><i class="fa-solid fa-bolt"></i></div>
+            <h4>Instant Results</h4>
+            <p>Get summaries and insights from your video automatically.</p>
+          </div>
+          <div class="card card-pad feature-card">
+            <div class="input-card-icon icon-purple"><i class="fa-solid fa-message"></i></div>
+            <h4>Ask Anything</h4>
+            <p>Chat with your video using AI-powered Q&amp;A.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== PROCESSING ===================== -->
+      <section class="view" id="view-processing">
+        <div class="processing-wrap">
+
+          <div id="processingContent">
+            <div class="processing-head">
+              <h2>Processing Your Video</h2>
+              <p>This may take a few minutes depending on the video length.</p>
+            </div>
+
+            <div class="job-info-card card">
+              <div class="thumb"><i class="fa-solid fa-film"></i></div>
+              <div>
+                <div class="job-title" id="procJobTitle">—</div>
+                <div class="job-meta">
+                  <span id="procJobSource"></span>
+                  <span id="procJobId"></span>
+                  <span id="procJobLang"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="progress-card card">
+              <div class="progress-label-row">
+                <span>Overall Progress</span>
+                <span class="progress-percent" id="progressPercent">5%</span>
+              </div>
+              <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+            </div>
+
+            <div class="timeline-card card">
+              <div class="timeline" id="timelineList"></div>
+            </div>
+          </div>
+
+          <div class="error-card card hidden" id="processingError">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <h3>Video processing failed</h3>
+            <p id="processingErrorMsg">Something went wrong while processing this video.</p>
+            <div style="display:flex; gap:10px; justify-content:center;">
+              <button class="btn btn-secondary" id="backToDashboardBtn">Back to Dashboard</button>
+              <button class="btn btn-primary" id="retryProcessingBtn">Try Again</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ===================== RESULTS ===================== -->
+      <section class="view" id="view-results">
+
+        <div class="results-header">
+          <div>
+            <a href="#" class="back-link" id="backToJobsLink"><i class="fa-solid fa-arrow-left"></i> Back to Jobs</a>
+            <div class="results-title-row">
+              <h1 id="resultsTitle">Video title</h1>
+              <span class="badge badge-success"><i class="fa-solid fa-circle-check"></i> Completed</span>
+            </div>
+          </div>
+          <div class="results-actions">
+            <button class="btn btn-primary" id="chatWithAiBtn"><i class="fa-solid fa-comments"></i> Chat with AI</button>
+            <button class="btn btn-danger" id="deleteJobBtn"><i class="fa-solid fa-trash"></i> Delete Job</button>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist">
+          <button class="tab-btn active" data-tab="overview" role="tab">Overview</button>
+          <button class="tab-btn" data-tab="summary" role="tab">Summary</button>
+          <button class="tab-btn" data-tab="transcript" role="tab">Transcript</button>
+          <button class="tab-btn" data-tab="actionitems" role="tab">Action Items</button>
+          <button class="tab-btn" data-tab="decisions" role="tab">Key Decisions</button>
+          <button class="tab-btn" data-tab="questions" role="tab">Open Questions</button>
+        </div>
+
+        <!-- Overview -->
+        <div class="tab-panel active" id="tab-overview">
+          <div class="card card-pad">
+            <h3 style="margin-bottom:16px; font-size:15px;">Video Details</h3>
+            <div class="detail-grid">
+              <div class="detail-item"><div class="detail-label">Title</div><div class="detail-value" id="detailTitle">—</div></div>
+              <div class="detail-item"><div class="detail-label">Language</div><div class="detail-value" id="detailLanguage">—</div></div>
+              <div class="detail-item"><div class="detail-label">Processed</div><div class="detail-value" id="detailProcessed">—</div></div>
+              <div class="detail-item"><div class="detail-label">Status</div><div class="detail-value" id="detailStatus">—</div></div>
+            </div>
+          </div>
+
+          <div class="card summary-preview">
+            <h3 style="margin-bottom:12px; font-size:15px;"><i class="fa-solid fa-sparkles" style="color:var(--primary-2);"></i> AI Summary</h3>
+            <div class="content-block" id="overviewSummaryPreview"></div>
+            <a href="#" class="link-more" id="viewFullSummaryLink">View Full Summary <i class="fa-solid fa-arrow-right"></i></a>
+          </div>
+
+          <div class="stat-grid">
+            <div class="card stat-card">
+              <div class="stat-icon icon-purple"><i class="fa-solid fa-list-check"></i></div>
+              <div class="stat-value" id="statActionItems">0</div>
+              <div class="stat-label">Action Items</div>
+              <div class="stat-sub">Things to do</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon" style="background:var(--secondary);"><i class="fa-solid fa-gavel"></i></div>
+              <div class="stat-value" id="statDecisions">0</div>
+              <div class="stat-label">Key Decisions</div>
+              <div class="stat-sub">Important decisions</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon icon-teal"><i class="fa-solid fa-circle-question"></i></div>
+              <div class="stat-value" id="statQuestions">0</div>
+              <div class="stat-label">Open Questions</div>
+              <div class="stat-sub">Questions to explore</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-icon" style="background:var(--warning);"><i class="fa-solid fa-file-lines"></i></div>
+              <div class="stat-value" id="statWords">0</div>
+              <div class="stat-label">Transcript Words</div>
+              <div class="stat-sub">Total words</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="tab-panel" id="tab-summary">
+          <div class="card content-card">
+            <div class="content-card-head">
+              <h3 style="font-size:15px;">AI Summary</h3>
+              <button class="btn btn-secondary btn-sm" id="copySummaryBtn"><i class="fa-solid fa-copy"></i> Copy Summary</button>
+            </div>
+            <div class="content-block" id="summaryFullContent"></div>
+          </div>
+        </div>
+
+        <!-- Transcript -->
+        <div class="tab-panel" id="tab-transcript">
+          <div class="card content-card">
+            <div class="transcript-toolbar">
+              <div class="search-input">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="transcriptSearchInput" placeholder="Search transcript..." aria-label="Search transcript" />
+              </div>
+              <span class="badge badge-neutral" id="transcriptWordCount">0 words</span>
+              <button class="btn btn-secondary btn-sm" id="copyTranscriptBtn"><i class="fa-solid fa-copy"></i> Copy</button>
+              <button class="btn btn-secondary btn-sm" id="downloadTranscriptBtn"><i class="fa-solid fa-download"></i> Download</button>
+            </div>
+            <div class="transcript-box" id="transcriptBox"></div>
+          </div>
+        </div>
+
+        <!-- Action items -->
+        <div class="tab-panel" id="tab-actionitems">
+          <div class="checklist" id="actionItemsList"></div>
+        </div>
+
+        <!-- Decisions -->
+        <div class="tab-panel" id="tab-decisions">
+          <div class="decision-grid" id="decisionsList"></div>
+        </div>
+
+        <!-- Questions -->
+        <div class="tab-panel" id="tab-questions">
+          <div class="question-grid" id="questionsList"></div>
+        </div>
+
+      </section>
+
+      <!-- ===================== CHAT ===================== -->
+      <section class="view" id="view-chat">
+        <div class="page-header">
+          <h1>Chat with AI Assistant</h1>
+          <p id="chatJobTitle">Ask anything about the video content</p>
+        </div>
+
+        <div class="chat-layout">
+          <div class="chat-history card">
+            <h4>Suggested Questions</h4>
+            <button class="suggestion-item">What are the key takeaways?</button>
+            <button class="suggestion-item">What is the main purpose?</button>
+            <button class="suggestion-item">How can I improve my mindset?</button>
+            <button class="suggestion-item">What are the important habits?</button>
+            <button class="btn btn-ghost btn-sm clear-chat-btn" id="clearChatBtn"><i class="fa-solid fa-broom"></i> Clear Chat</button>
+          </div>
+
+          <div class="chat-panel card">
+            <div class="chat-panel-head">
+              <div>
+                <h3>AI Assistant</h3>
+                <p>Answers are generated from the video transcript</p>
+              </div>
+            </div>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input-row" id="chatInputRow">
+              <textarea id="chatInput" rows="1" placeholder="Ask a question about this video..." aria-label="Chat message"></textarea>
+              <button class="send-btn" id="chatSendBtn" aria-label="Send message"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== MY JOBS ===================== -->
+      <section class="view" id="view-jobs">
+        <div class="page-header">
+          <h1>My Jobs</h1>
+          <p>Videos you've processed in this browser</p>
+        </div>
+
+        <div class="jobs-filter-row">
+          <button class="filter-chip active" data-filter="all">All</button>
+          <button class="filter-chip" data-filter="done">Completed</button>
+          <button class="filter-chip" data-filter="processing">Processing</button>
+          <button class="filter-chip" data-filter="queued">Queued</button>
+          <button class="filter-chip" data-filter="error">Error</button>
+        </div>
+
+        <div class="jobs-list" id="jobsList"></div>
+      </section>
+
+      <!-- ===================== SETTINGS ===================== -->
+      <section class="view" id="view-settings">
+        <div class="page-header">
+          <h1>Settings</h1>
+          <p>Configure how AI Video Assistant behaves</p>
+        </div>
+
+        <div class="settings-grid">
+          <div class="card settings-row">
+            <div>
+              <div class="settings-row-title">API Base URL</div>
+              <div class="settings-row-sub">Backend endpoint used for all requests</div>
+            </div>
+            <input type="text" value="http://127.0.0.1:8000" disabled />
+          </div>
+
+          <div class="card settings-row">
+            <div>
+              <div class="settings-row-title">Dark Mode</div>
+              <div class="settings-row-sub">Toggle the interface theme</div>
+            </div>
+            <span class="switch">
+              <input type="checkbox" id="darkModeToggleSettings" />
+              <span class="track"></span>
+            </span>
+          </div>
+
+          <div class="card settings-row">
+            <div>
+              <div class="settings-row-title">Clear Local Job History</div>
+              <div class="settings-row-sub">Removes remembered jobs from this browser only</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="clearJobHistoryBtn">Clear</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ===================== DELETE MODAL ===================== -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal-box card">
+    <div class="modal-icon"><i class="fa-solid fa-trash"></i></div>
+    <h3>Delete this video analysis?</h3>
+    <p>This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== TOASTS ===================== -->
+<div class="toast-stack" id="toastStack"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
