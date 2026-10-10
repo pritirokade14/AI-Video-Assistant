@@ -20,15 +20,18 @@ from core.rag_engine import build_rag_chain, ask_question
 
 load_dotenv()
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-app = FastAPI(title="AI Video Assistant API", version="1.0.0")
+print("BASE_DIR:", BASE_DIR)
+print("FRONTEND_DIR:", FRONTEND_DIR)
+print("Frontend exists:", os.path.isdir(FRONTEND_DIR))
 
-if os.path.isdir(FRONTEND_DIR):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+app = FastAPI(title="AI Video Assistant API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -200,5 +203,8 @@ def delete_job(job_id: str):
         raise HTTPException(status_code=404, detail="job not found")
     del jobs[job_id]
     return {"deleted": job_id}
+
+if os.path.isdir(FRONTEND_DIR):
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 
 

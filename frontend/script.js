@@ -1,5 +1,5 @@
 
-const API_BASE_URL = window.location.origin;
+const API_BASE_URL = "https://ai-video-assistant-77ws.onrender.com";
 
 // Backend stage -> overall progress percentage
 const STAGE_PROGRESS = {
