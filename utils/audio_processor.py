@@ -1,25 +1,26 @@
 import yt_dlp
 from pydub import AudioSegment
 import os
+import shutil
+import tempfile
 
 DOWNLOAD_DIR = 'downloades'
-os.makedirs(DOWNLOAD_DIR,exist_ok = True)
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 def download_youtube_audio(url: str) -> str:
     output_path = os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s")
     
-    # Check Render's official secret path first, then fallback to local root
+    # Possible locations where Render mounts or stores cookies.txt
     possible_cookie_paths = [
         "/etc/secrets/cookies.txt",  # Render Secret File path
-        "cookies.txt",               # Root directory
-        os.path.join(os.path.dirname(__file__), "..", "cookies.txt") # Relative fallback
+        "cookies.txt",               # Local root fallback
+        os.path.join(os.path.dirname(__file__), "..", "cookies.txt")
     ]
     
     cookies_path = None
     for path in possible_cookie_paths:
         if os.path.exists(path):
             cookies_path = path
-            print(f"Found YouTube cookies at: {path}")
             break
 
     ydl_opts = {
@@ -36,7 +37,15 @@ def download_youtube_audio(url: str) -> str:
     }
 
     if cookies_path:
-        ydl_opts['cookiefile'] = cookies_path
+        try:
+            # Copy from read-only mount to a writable /tmp storage location to prevent [Errno 30]
+            writable_cookies_path = os.path.join(tempfile.gettempdir(), "active_cookies.txt")
+            shutil.copyfile(cookies_path, writable_cookies_path)
+            ydl_opts['cookiefile'] = writable_cookies_path
+            print(f"Successfully loaded and copied cookies to: {writable_cookies_path}")
+        except Exception as e:
+            print(f"Warning: Could not copy cookie file: {e}")
+            ydl_opts['cookiefile'] = cookies_path
     else:
         print("WARNING: cookies.txt not found anywhere!")
         
@@ -46,24 +55,21 @@ def download_youtube_audio(url: str) -> str:
     return filename
 
 def convert_to_wav(input_path: str) -> str:
-    """Convert any audio/video file to WAV format using pydub."""
     output_path = os.path.splitext(input_path)[0] + "_converted.wav"
     audio = AudioSegment.from_file(input_path)
-    audio = audio.set_channels(1).set_frame_rate(16000) #16khz
+    audio = audio.set_channels(1).set_frame_rate(16000)
     audio.export(output_path, format="wav")
     return output_path
 
-def chunk_audio(wav_path : str , chunk_minutes : int = 10) -> list:
+def chunk_audio(wav_path: str, chunk_minutes: int = 10) -> list:
     audio = AudioSegment.from_wav(wav_path)
     chunk_ms = chunk_minutes * 60 * 1000 
-
     chunks = []
 
-    for i, start in enumerate(range(0,len(audio),chunk_ms)):
+    for i, start in enumerate(range(0, len(audio), chunk_ms)):
         chunk = audio[start : start + chunk_ms]
         chunk_path = f"{wav_path}_chunk_{i}.wav"
-        chunk.export(chunk_path , format = "wav")
-
+        chunk.export(chunk_path, format="wav")
         chunks.append(chunk_path)
     
     return chunks
