@@ -27,7 +27,9 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app = FastAPI(title="AI Video Assistant API", version="1.0.0")
 
-# Allow the frontend (served from anywhere during dev) to call the API.
+if os.path.isdir(FRONTEND_DIR):
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -42,9 +44,7 @@ class JobStatus(str, Enum):
     DONE = "done"
     ERROR = "error"
 
-
 jobs: dict[str, dict] = {}
-
 
 def _new_job() -> str:
     job_id = str(uuid.uuid4())
@@ -55,7 +55,7 @@ def _new_job() -> str:
         "created_at": datetime.utcnow().isoformat(),
         "error": None,
         "result": None,
-        "rag_chain": None,  # kept server-side only, never returned to client
+        "rag_chain": None,  
     }
     return job_id
 
@@ -106,16 +106,11 @@ def _run_pipeline_job(job_id: str, source: str, language: str):
         jobs[job_id]["status"] = JobStatus.DONE
         jobs[job_id]["stage"] = "done"
 
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  
         jobs[job_id]["status"] = JobStatus.ERROR
         jobs[job_id]["error"] = f"{exc}"
         jobs[job_id]["stage"] = "error"
         traceback.print_exc()
-
-
-# ---------------------------------------------------------------------------
-# Request / response models
-# ---------------------------------------------------------------------------
 
 class ProcessURLRequest(BaseModel):
     source: str
@@ -125,15 +120,9 @@ class ProcessURLRequest(BaseModel):
 class ChatRequest(BaseModel):
     question: str
 
-
 class JobResponse(BaseModel):
     job_id: str
     status: JobStatus
-
-
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
 
 @app.get("/api/health")
 def health():
@@ -199,7 +188,7 @@ def chat(job_id: str, req: ChatRequest):
 
     try:
         answer = ask_question(job["rag_chain"], req.question)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  
         raise HTTPException(status_code=500, detail=f"chat failed: {exc}") from exc
 
     return {"question": req.question, "answer": answer}
@@ -213,8 +202,3 @@ def delete_job(job_id: str):
     return {"deleted": job_id}
 
 
-# ---------------------------------------------------------------------------
-# Serve the frontend as static files (optional convenience for local dev)
-# ---------------------------------------------------------------------------
-if os.path.isdir(FRONTEND_DIR):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

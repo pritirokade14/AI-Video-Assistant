@@ -1,11 +1,4 @@
-/* =========================================================
-   AI Video Assistant — script.js
-   Vanilla JS. Talks to the FastAPI backend only.
-   ========================================================= */
 
-// ---------------------------------------------------------
-// Configuration
-// ---------------------------------------------------------
 const API_BASE_URL = "http://127.0.0.1:8000";
 
 // Backend stage -> overall progress percentage
@@ -23,7 +16,6 @@ const STAGE_PROGRESS = {
   error: 100,
 };
 
-// Ordered timeline shown on the processing screen
 const TIMELINE_STAGES = [
   { key: "processing_input", label: "Processing Input" },
   { key: "transcribing", label: "Transcribing" },
@@ -37,9 +29,6 @@ const TIMELINE_STAGES = [
 
 const POLL_INTERVAL_MS = 2500;
 
-// ---------------------------------------------------------
-// State
-// ---------------------------------------------------------
 const state = {
   currentJobId: localStorage.getItem("currentJobId") || null,
   currentJob: null,
@@ -50,10 +39,7 @@ const state = {
   uploadFile: null,
 };
 
-// ---------------------------------------------------------
-// Local storage helpers (job metadata only — results always
-// come from the backend, never cached as fake data)
-// ---------------------------------------------------------
+
 function loadJobsMeta() {
   try {
     return JSON.parse(localStorage.getItem("jobsMeta") || "{}");
@@ -76,9 +62,6 @@ function forgetJob(jobId) {
   saveJobsMeta();
 }
 
-// ---------------------------------------------------------
-// Generic API request helper
-// ---------------------------------------------------------
 async function apiRequest(path, options = {}) {
   let response;
   try {
@@ -112,9 +95,7 @@ class ApiError extends Error {
   }
 }
 
-// ---------------------------------------------------------
-// Toasts / error surface
-// ---------------------------------------------------------
+
 function showToast(message, type = "info", title = "") {
   const stack = document.getElementById("toastStack");
   const icons = { info: "fa-circle-info", success: "fa-circle-check", error: "fa-circle-exclamation" };
@@ -138,13 +119,64 @@ function showError(message) {
   showToast(message, "error");
 }
 
-// ---------------------------------------------------------
-// Utilities
-// ---------------------------------------------------------
+
 function escapeHtml(str) {
   const div = document.createElement("div");
   div.textContent = str ?? "";
   return div.innerHTML;
+}
+
+function formatMarkdownText(text) {
+  if (!text) return "";
+  // First escape standard HTML entities
+  let escaped = escapeHtml(text);
+  // Replace markdown **bold** with HTML <b> tags
+  escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+  return escaped;
+}
+
+function formatSummaryPoint(text) {
+  if (!text) return "";
+  let cleanText = text.trim();
+
+  // Convert markdown bold syntax (**text**) to HTML <b> tags
+  cleanText = cleanText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+  cleanText = cleanText.replace(/^\*+|\*+$/g, '').trim();
+
+  if (cleanText.includes(":") && !cleanText.includes("<b>")) {
+    const parts = cleanText.split(":");
+    const heading = parts[0].trim();
+    const rest = parts.slice(1).join(":").trim();
+    return `<b>${heading}:</b> ${rest}`;
+  }
+
+  return cleanText;
+}
+
+function renderFormattedSummary(summaryText, containerEl) {
+  if (!containerEl) return;
+  if (!summaryText) {
+    containerEl.innerHTML = "No summary available.";
+    return;
+  }
+
+  const lines = summaryText.split(/\r?\n/).filter(Boolean);
+  const htmlContent = lines.map(line => {
+    const trimmed = line.trim();
+
+    if (/^([-*•]|\d+[\.\)])\s*/.test(trimmed)) {
+      const contentWithoutBullet = trimmed.replace(/^([-*•]|\d+[\.\)])\s*/, "");
+      const formatted = formatSummaryPoint(contentWithoutBullet);
+      return `<div class="summary-line" style="margin-bottom: 6px; padding-left: 12px; display: flex; gap: 6px;">
+        <span style="color: var(--primary);">•</span> <span>${formatted}</span>
+      </div>`;
+    } else {
+      const formattedHeader = formatSummaryPoint(trimmed);
+      return `<div class="summary-header" style="margin-top: 14px; margin-bottom: 4px; font-weight: bold; font-size: 1.05em; color: var(--text-main);">${formattedHeader}</div>`;
+    }
+  }).join("");
+
+  containerEl.innerHTML = htmlContent;
 }
 
 function wordCount(text) {
@@ -171,11 +203,6 @@ function timeAgo(iso) {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
-/**
- * Parses a numbered/bulleted plain-text list returned by the LLM
- * (e.g. "1. Do X\n2. Do Y") into a clean array of strings.
- * Falls back to splitting on newlines if no numbering is found.
- */
 function parseListText(text) {
   if (!text) return [];
   if (Array.isArray(text)) return text.filter(Boolean);
@@ -202,7 +229,6 @@ function parseListText(text) {
   }
   if (buffer) items.push(buffer.trim());
 
-  // If nothing looked like a list, treat non-empty lines as items
   if (items.length === 0) return lines;
   return items;
 }
@@ -218,9 +244,6 @@ function isNoneFound(text) {
   );
 }
 
-// ---------------------------------------------------------
-// Navigation / view switching
-// ---------------------------------------------------------
 function switchView(viewName, opts = {}) {
   document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
   const target = document.getElementById(`view-${viewName}`);
@@ -233,11 +256,6 @@ function switchView(viewName, opts = {}) {
   closeSidebarMobile();
   window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
 
-  if (viewName !== "processing" && state.pollHandle) {
-    // Leaving the processing screen — no need to keep polling in the background
-    // unless the user is actively viewing the results of the same job.
-  }
-
   if (viewName === "jobs") renderJobsList();
   if (viewName === "chat") renderChat();
   if (!opts.silent) window.location.hash = viewName;
@@ -249,9 +267,7 @@ function initNav() {
   });
 }
 
-// ---------------------------------------------------------
-// Mobile sidebar
-// ---------------------------------------------------------
+
 function openSidebarMobile() {
   document.getElementById("sidebar").classList.add("open");
   document.getElementById("sidebarOverlay").classList.add("open");
@@ -261,9 +277,6 @@ function closeSidebarMobile() {
   document.getElementById("sidebarOverlay").classList.remove("open");
 }
 
-// ---------------------------------------------------------
-// Theme toggle
-// ---------------------------------------------------------
 function initTheme() {
   const saved = localStorage.getItem("theme") || "dark";
   document.documentElement.setAttribute("data-theme", saved);
@@ -281,9 +294,7 @@ function initTheme() {
   toggles.forEach((t) => t && t.addEventListener("change", () => applyTheme(t.checked)));
 }
 
-// ---------------------------------------------------------
-// Dashboard — YouTube URL submission
-// ---------------------------------------------------------
+
 function isLikelyYoutubeUrl(url) {
   return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i.test(url.trim());
 }
@@ -431,9 +442,6 @@ function setBtnLoading(btn, loading, label) {
     : `${escapeHtml(label)} <i class="fa-solid fa-arrow-right"></i>`;
 }
 
-// ---------------------------------------------------------
-// Job lifecycle
-// ---------------------------------------------------------
 function startJob(jobId, meta) {
   state.currentJobId = jobId;
   localStorage.setItem("currentJobId", jobId);
@@ -446,7 +454,7 @@ function startJob(jobId, meta) {
 
 function startPolling(jobId) {
   stopPolling();
-  getJobStatus(jobId); // immediate check
+  getJobStatus(jobId);
   state.pollHandle = setInterval(() => getJobStatus(jobId), POLL_INTERVAL_MS);
 }
 
@@ -482,9 +490,7 @@ async function getJobStatus(jobId) {
   }
 }
 
-// ---------------------------------------------------------
-// Processing UI
-// ---------------------------------------------------------
+
 function renderProcessingHeader(meta, jobId) {
   document.getElementById("procJobTitle").textContent = meta.title || "Processing job";
   document.getElementById("procJobSource").innerHTML = `<i class="fa-solid ${
@@ -578,10 +584,10 @@ function showResults(job) {
   document.getElementById("detailProcessed").textContent = formatDate(job.created_at);
   document.getElementById("detailStatus").textContent = "Completed";
 
-  // Summary preview (overview) + full summary tab
+  // Summary rendering with clean bold headers and points
   const summaryText = result.summary || "";
-  document.getElementById("overviewSummaryPreview").textContent = summaryText || "No summary available.";
-  document.getElementById("summaryFullContent").textContent = summaryText || "No summary available.";
+  renderFormattedSummary(summaryText, document.getElementById("overviewSummaryPreview"));
+  renderFormattedSummary(summaryText, document.getElementById("summaryFullContent"));
 
   // Stats
   const actionItems = parseListText(result.action_items);
@@ -764,9 +770,10 @@ function renderChatMessages() {
           <div class="msg-bubble">${escapeHtml(m.text)}</div>
         </div>`;
       }
+      // AI messages use formatMarkdownText to support bolding without raw asterisks
       return `
       <div class="msg msg-ai">
-        <div class="msg-bubble">${escapeHtml(m.text)}</div>
+        <div class="msg-bubble">${formatMarkdownText(m.text)}</div>
         <div class="msg-meta">
           <button class="msg-copy-btn" data-copy-index="${i}"><i class="fa-solid fa-copy"></i> Copy</button>
         </div>
