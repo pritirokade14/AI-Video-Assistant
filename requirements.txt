@@ -1,5 +1,6 @@
-
-yt-dlp>=2024.4.9                  
+fastapi>=0.110.0
+uvicorn>=0.28.0
+yt-dlp>=2024.4.9                    
 pydub>=0.25.1                     
 ffmpeg-python>=0.2.0              
 torch>=2.2.0                      
