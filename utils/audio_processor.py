@@ -5,9 +5,23 @@ import os
 DOWNLOAD_DIR = 'downloades'
 os.makedirs(DOWNLOAD_DIR,exist_ok = True)
 
-def download_youtube_audio(url :str) ->str:
+def download_youtube_audio(url: str) -> str:
     output_path = os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s")
-    cookies_path = os.path.join(os.path.dirname(__file__), "..", "cookies.txt")
+    
+    # Check Render's official secret path first, then fallback to local root
+    possible_cookie_paths = [
+        "/etc/secrets/cookies.txt",  # Render Secret File path
+        "cookies.txt",               # Root directory
+        os.path.join(os.path.dirname(__file__), "..", "cookies.txt") # Relative fallback
+    ]
+    
+    cookies_path = None
+    for path in possible_cookie_paths:
+        if os.path.exists(path):
+            cookies_path = path
+            print(f"Found YouTube cookies at: {path}")
+            break
+
     ydl_opts = {
         "format": "bestaudio/best",
         "outtmpl": output_path,
@@ -21,8 +35,10 @@ def download_youtube_audio(url :str) ->str:
         "quiet": True,
     }
 
-    if os.path.exists(cookies_path):
+    if cookies_path:
         ydl_opts['cookiefile'] = cookies_path
+    else:
+        print("WARNING: cookies.txt not found anywhere!")
         
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
