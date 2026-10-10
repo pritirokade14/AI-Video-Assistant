@@ -10,10 +10,9 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 def download_youtube_audio(url: str) -> str:
     output_path = os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s")
     
-    # Possible locations where Render mounts or stores cookies.txt
     possible_cookie_paths = [
-        "/etc/secrets/cookies.txt",  # Render Secret File path
-        "cookies.txt",               # Local root fallback
+        "/etc/secrets/cookies.txt",  
+        "cookies.txt",               
         os.path.join(os.path.dirname(__file__), "..", "cookies.txt")
     ]
     
@@ -33,21 +32,22 @@ def download_youtube_audio(url: str) -> str:
                 "preferredquality": "192",
             }
         ],
-        "quiet": True,
+        # Force android player client to help bypass data-center bot blocks
+        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+        "quiet": False,  # Temporarily set to False so logs show full details on Render
     }
 
     if cookies_path:
         try:
-            # Copy from read-only mount to a writable /tmp storage location to prevent [Errno 30]
             writable_cookies_path = os.path.join(tempfile.gettempdir(), "active_cookies.txt")
             shutil.copyfile(cookies_path, writable_cookies_path)
             ydl_opts['cookiefile'] = writable_cookies_path
-            print(f"Successfully loaded and copied cookies to: {writable_cookies_path}")
+            print(f"SUCCESS: Loaded cookies from {cookies_path} into {writable_cookies_path}")
         except Exception as e:
-            print(f"Warning: Could not copy cookie file: {e}")
+            print(f"ERROR copying cookies: {e}")
             ydl_opts['cookiefile'] = cookies_path
     else:
-        print("WARNING: cookies.txt not found anywhere!")
+        print("CRITICAL WARNING: cookies.txt was not found in any path!")
         
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
