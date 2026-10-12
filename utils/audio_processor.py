@@ -3,56 +3,92 @@ from pydub import AudioSegment
 import os
 import shutil
 import tempfile
+import glob
 
 DOWNLOAD_DIR = 'downloades'
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 def download_youtube_audio(url: str) -> str:
-    output_path = os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s")
-    
-    possible_cookie_paths = [
-        "/etc/secrets/cookies.txt",  
-        "cookies.txt",               
-        os.path.join(os.path.dirname(__file__), "..", "cookies.txt")
-    ]
-    
-    cookies_path = None
-    for path in possible_cookie_paths:
-        if os.path.exists(path):
-            cookies_path = path
-            break
+    cookies_path = "/etc/secrets/cookies.txt"
+
+    if not os.path.isfile(cookies_path):
+        raise RuntimeError(
+            "Render cookie secret not found at /etc/secrets/cookies.txt. "
+            "Check the secret file name and mount path."
+        )
+
+    # Validate the cookie file format without printing cookie contents.
+    with open(cookies_path, "r", encoding="utf-8-sig") as f:
+        first_line = f.readline().strip()
+
+    if first_line not in (
+        "# HTTP Cookie File",
+        "# Netscape HTTP Cookie File",
+    ):
+        raise RuntimeError(
+            "Invalid cookies.txt format. Export cookies in "
+            "Mozilla/Netscape format and redeploy."
+        )
+
+    # Use a unique directory for each download.
+    job_dir = os.path.join(DOWNLOAD_DIR, os.urandom(8).hex())
+    os.makedirs(job_dir, exist_ok=True)
+
+    output_template = os.path.join(job_dir, "audio.%(ext)s")
 
     ydl_opts = {
         "format": "bestaudio/best",
-        "outtmpl": output_path,
+        "outtmpl": output_template,
+        "cookiefile": cookies_path,
+        "noplaylist": True,
+        "quiet": False,
+        "socket_timeout": 30,
+        "retries": 2,
+        "extractor_retries": 2,
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
                 "preferredcodec": "wav",
-                "preferredquality": "192",
             }
         ],
-        # Force android player client to help bypass data-center bot blocks
-        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
-        "quiet": False,  # Temporarily set to False so logs show full details on Render
     }
 
-    if cookies_path:
-        try:
-            writable_cookies_path = os.path.join(tempfile.gettempdir(), "active_cookies.txt")
-            shutil.copyfile(cookies_path, writable_cookies_path)
-            ydl_opts['cookiefile'] = writable_cookies_path
-            print(f"SUCCESS: Loaded cookies from {cookies_path} into {writable_cookies_path}")
-        except Exception as e:
-            print(f"ERROR copying cookies: {e}")
-            ydl_opts['cookiefile'] = cookies_path
-    else:
-        print("CRITICAL WARNING: cookies.txt was not found in any path!")
-        
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        filename = ydl.prepare_filename(info).replace(".webm", ".wav").replace(".m4a", ".wav")
-    return filename
+    try:
+        print("Starting YouTube audio extraction...")
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.extract_info(url, download=True)
+
+        wav_files = glob.glob(os.path.join(job_dir, "*.wav"))
+
+        if not wav_files:
+            raise RuntimeError(
+                "Download completed but no WAV file was generated. "
+                "Check the FFmpeg installation and Render logs."
+            )
+
+        wav_path = wav_files[0]
+        print("YouTube audio downloaded and converted successfully.")
+
+        return wav_path
+
+    except yt_dlp.utils.DownloadError as exc:
+        message = str(exc).lower()
+
+        if (
+            "sign in to confirm" in message
+            or "not a bot" in message
+        ):
+            raise RuntimeError(
+                "YouTube blocked the request with a verification check. "
+                "Check cookie validity and retry later, or upload "
+                "the audio/video file directly."
+            ) from exc
+
+        raise RuntimeError(
+            f"YouTube download failed: {exc}"
+        ) from exc
+
 
 def convert_to_wav(input_path: str) -> str:
     output_path = os.path.splitext(input_path)[0] + "_converted.wav"
