@@ -13,64 +13,77 @@ def download_youtube_audio(url: str) -> str:
 
     if not os.path.isfile(cookies_path):
         raise RuntimeError(
-            "Render cookie secret not found at /etc/secrets/cookies.txt. "
-            "Check the secret file name and mount path."
+            "cookies.txt not found at /etc/secrets/cookies.txt. "
+            "Check your Render Secret Files configuration."
         )
 
-    # Validate the cookie file format without printing cookie contents.
-    with open(cookies_path, "r", encoding="utf-8-sig") as f:
-        first_line = f.readline().strip()
-
-    if first_line not in (
-        "# HTTP Cookie File",
-        "# Netscape HTTP Cookie File",
-    ):
-        raise RuntimeError(
-            "Invalid cookies.txt format. Export cookies in "
-            "Mozilla/Netscape format and redeploy."
-        )
-
-    # Use a unique directory for each download.
-    job_dir = os.path.join(DOWNLOAD_DIR, os.urandom(8).hex())
-    os.makedirs(job_dir, exist_ok=True)
-
-    output_template = os.path.join(job_dir, "audio.%(ext)s")
-
-    ydl_opts = {
-        "format": "bestaudio/best",
-        "outtmpl": output_template,
-        "cookiefile": cookies_path,
-        "noplaylist": True,
-        "quiet": False,
-        "socket_timeout": 30,
-        "retries": 2,
-        "extractor_retries": 2,
-        "postprocessors": [
-            {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "wav",
-            }
-        ],
-    }
+    # Create a writable temporary copy of the read-only secret.
+    writable_cookies_path = os.path.join(
+        tempfile.gettempdir(),
+        f"cookies_{os.urandom(8).hex()}.txt"
+    )
 
     try:
+        shutil.copyfile(cookies_path, writable_cookies_path)
+
+        # Validate the copied cookie file.
+        with open(
+            writable_cookies_path, "r", encoding="utf-8-sig"
+        ) as f:
+            first_line = f.readline().strip()
+
+        if first_line not in (
+            "# HTTP Cookie File",
+            "# Netscape HTTP Cookie File",
+        ):
+            raise RuntimeError(
+                "Invalid cookies.txt format. Use a valid "
+                "Mozilla/Netscape-format cookie export."
+            )
+
+        job_dir = os.path.join(
+            DOWNLOAD_DIR, os.urandom(8).hex()
+        )
+        os.makedirs(job_dir, exist_ok=True)
+
+        output_template = os.path.join(
+            job_dir, "audio.%(ext)s"
+        )
+
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "outtmpl": output_template,
+            "cookiefile": writable_cookies_path,
+            "noplaylist": True,
+            "quiet": False,
+            "socket_timeout": 30,
+            "retries": 2,
+            "extractor_retries": 2,
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "wav",
+                }
+            ],
+        }
+
         print("Starting YouTube audio extraction...")
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.extract_info(url, download=True)
 
-        wav_files = glob.glob(os.path.join(job_dir, "*.wav"))
+        wav_files = glob.glob(
+            os.path.join(job_dir, "*.wav")
+        )
 
         if not wav_files:
             raise RuntimeError(
-                "Download completed but no WAV file was generated. "
-                "Check the FFmpeg installation and Render logs."
+                "No WAV file was generated. Check FFmpeg "
+                "installation and Render logs."
             )
 
-        wav_path = wav_files[0]
-        print("YouTube audio downloaded and converted successfully.")
-
-        return wav_path
+        print("YouTube audio downloaded successfully.")
+        return wav_files[0]
 
     except yt_dlp.utils.DownloadError as exc:
         message = str(exc).lower()
@@ -80,14 +93,23 @@ def download_youtube_audio(url: str) -> str:
             or "not a bot" in message
         ):
             raise RuntimeError(
-                "YouTube blocked the request with a verification check. "
-                "Check cookie validity and retry later, or upload "
-                "the audio/video file directly."
+                "YouTube requires verification. The cookies may "
+                "be expired or rejected by YouTube, or the Render "
+                "server may be blocked. Try uploading the audio "
+                "or video file directly."
             ) from exc
 
         raise RuntimeError(
             f"YouTube download failed: {exc}"
         ) from exc
+
+    finally:
+        # Remove the temporary cookie copy after processing.
+        try:
+            if os.path.exists(writable_cookies_path):
+                os.remove(writable_cookies_path)
+        except OSError:
+            print("Warning: Could not remove temporary cookie copy.")
 
 
 def convert_to_wav(input_path: str) -> str:
